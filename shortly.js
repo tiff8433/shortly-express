@@ -2,6 +2,8 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var bcrypt = require('bcrypt-nodejs');
+var Promise = require('bluebird');
 
 
 var db = require('./app/config');
@@ -126,19 +128,22 @@ app.post('/signup', function(req, res){
 app.post('/login', function(req, res){
   var username = req.body.username;
   var password = req.body.password;
-  new User({username: username, password: password}).fetch().then(function(exists){
-    if(exists){
-      //make a session
-      req.session.regenerate(function(error){
-        if (error) {
-          console.log('error', error);
-        } 
-        res.redirect('/');
-      });
-      
-    } else {
-      res.redirect('/login');
-    }
+  bcrypt.hash(password, null, null, function(err, hash){
+   
+    new User({username: username, password: hash}).fetch().then(function(exists){
+      if(exists){
+        //make a session
+        req.session.regenerate(function(error){
+          if (error) {
+            console.log('error', error);
+          } 
+          res.redirect('/');
+        });
+        
+      } else {
+        res.redirect('/login');
+      }
+    });
   });
 });
 /************************************************************/

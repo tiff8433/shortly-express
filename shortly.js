@@ -10,6 +10,7 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+var session = require('express-session');
 
 var app = express();
 
@@ -21,24 +22,39 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
+app.use(session({
+  secret: 'shortly',
+  resave: false,
+  saveUninitialized: true
+}));
+//if there is a session
+//if(req.session){
 
+//} else {
 
+//}
 app.get('/', 
 function(req, res) {
-  res.render('index');
+  res.redirect('login');
+  // res.render('index');
 });
 
 app.get('/create', 
 function(req, res) {
-  res.render('index');
+  //res.render('index');
+  res.redirect('login');
 });
 
 app.get('/links', 
 function(req, res) {
-  Links.reset().fetch().then(function(links) {
-    res.send(200, links.models);
-  });
+
+    // console.log('request session true?')
+    // Links.reset().fetch().then(function(links) {
+    //   res.send(200, links.models);
+    // });
+  res.redirect('/login')
 });
+
 
 app.post('/links', 
 function(req, res) {
@@ -51,6 +67,7 @@ function(req, res) {
 
   new Link({ url: uri }).fetch().then(function(found) {
     if (found) {
+      // console.log(found, ' what is found')
       res.send(200, found.attributes);
     } else {
       util.getUrlTitle(uri, function(err, title) {
@@ -77,9 +94,53 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+app.get('/login', function(req, res){
+  // var session = req.session;
+  // session.regenerate(function(err){
+    res.render('login');
+    // res.send(200);
+  // });
+});
+  
+app.post('/signup', function(req, res){
+ 
+  var username = req.body.username;
+  var password = req.body.password;
+  new User({username: username, password: password}).fetch().then(function(exists){
+    if(exists){
 
+    } else {
+      var user = new User({
+        username: username,
+        password: password
+      });
+      user.save().then(function(newUser){
+        Users.add(newUser);
+        // res.send(200, newUser);
+        res.redirect('/');
+      });
+    }
+  });
+});
 
-
+app.post('/login', function(req, res){
+  var username = req.body.username;
+  var password = req.body.password;
+  new User({username: username, password: password}).fetch().then(function(exists){
+    if(exists){
+      //make a session
+      req.session.regenerate(function(error){
+        if (error) {
+          console.log('error', error);
+        } 
+        res.redirect('/');
+      });
+      
+    } else {
+      res.redirect('/login');
+    }
+  });
+});
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
 // assume the route is a short code and try and handle it here.

@@ -1,3 +1,4 @@
+
 var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
@@ -38,28 +39,36 @@ app.use(session({
 //} else {
 
 //}
+
 app.get('/', 
 function(req, res) {
-  console.log(req.session);
-  req.session.allan = 'hi'
-  console.log(req.session.allan, 'cookie');
-  res.redirect('login');
-  // res.render('index');
+  // res.redirect('login');
+  if (req.session.loggedIn === true){
+    res.render('index');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get('/create', 
 function(req, res) {
-  //res.render('index');
-  res.redirect('login');
+  if (req.session.loggedIn === true){
+    res.render('index');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get('/links', 
 function(req, res) {
-
-    // console.log('request session true?')
-    // Links.reset().fetch().then(function(links) {
-    //   res.send(200, links.models);
-    // });
+  if (req.session.loggedIn === true){
+    Links.reset().fetch().then(function(links) {
+      res.send(200, links.models);
+    });
+  } else {
+    res.redirect('/login');
+  }
+    
   res.redirect('/login')
 });
 
@@ -114,9 +123,10 @@ app.post('/signup', function(req, res){
  
   var username = req.body.username;
   var password = req.body.password;
-  new User({username: username, password: password}).fetch().then(function(exists){
+  new User({username: username}).fetch().then(function(exists){
     if(exists){
-
+      console.log("user already exists");
+      res.redirect('/login');
     } else {
       var user = new User({
         username: username,
@@ -125,7 +135,10 @@ app.post('/signup', function(req, res){
       user.save().then(function(newUser){
         Users.add(newUser);
         // res.send(200, newUser);
-        res.redirect('/');
+        req.session.regenerate(function(err){
+          req.session.loggedIn = true;
+          res.redirect('/');          
+        });
       });
     }
   });
@@ -139,13 +152,14 @@ app.post('/login', function(req, res){
     if(user){
       //make a session
       var hashpw = user.get('password');
-      console.log(hashpw, 'this should be hashed');
+    
       bcrypt.compare(password, user.get('password'), function(err, response){
         if(response){
           req.session.regenerate(function(error){
             if (error) {
               console.log('error', error);
-            } 
+            }
+            req.session.loggedIn = true;
             res.redirect('/');
           });
         //password did not match  

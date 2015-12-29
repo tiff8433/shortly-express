@@ -40,6 +40,11 @@ app.use(session({
 
 //}
 
+app.get('/logout', function(req, res){
+  req.session.destroy(function(){
+    res.redirect('/login');
+  });
+})
 app.get('/', 
 function(req, res) {
   // res.redirect('login');
@@ -62,15 +67,15 @@ function(req, res) {
 app.get('/links', 
 function(req, res) {
   if (req.session.loggedIn === true){
-    Links.reset().fetch().then(function(links) {
+      Links.reset().fetch().then(function(links) {
       res.send(200, links.models);
     });
   } else {
     res.redirect('/login');
   }
-    
-  res.redirect('/login')
 });
+
+
 
 
 app.post('/links', 
@@ -118,7 +123,9 @@ app.get('/login', function(req, res){
     // res.send(200);
   // });
 });
-  
+app.get('/signup', function(req, res){
+  res.render('signup')
+})
 app.post('/signup', function(req, res){
  
   var username = req.body.username;

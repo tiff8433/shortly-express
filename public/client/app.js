@@ -1,3 +1,4 @@
+
 window.Shortly = Backbone.View.extend({
   template: Templates['layout'],
 
@@ -36,5 +37,6 @@ window.Shortly = Backbone.View.extend({
       .removeClass('selected')
       .filter('.' + routeName)
       .addClass('selected');
-  }
+  },
+
 });

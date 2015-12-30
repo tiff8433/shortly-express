@@ -5,6 +5,8 @@ var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var bcrypt = require('bcrypt-nodejs');
 var Promise = require('bluebird');
+var passport = require('passport');
+var GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
 
 
 var db = require('./app/config');
@@ -23,56 +25,111 @@ app.use(partials());
 // Parse JSON (uniform resource locators)
 app.use(bodyParser.json());
 // Parse forms (signup/login)
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(__dirname + '/public'));
-
 app.use(session({
-  secret: 'shortly',
+  secret: 'topSecret',
   resave: false,
   saveUninitialized: true
 }));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(__dirname + '/public'));
 
+// app.use(session({
+//   secret: 'shortly',
+//   resave: false,
+//   saveUninitialized: true
+// }));
+passport.serializeUser(function(user, done) {
+  done(null, user);
+});
 
-//if there is a session
-//if(req.session){
+passport.deserializeUser(function(user, done) {
+  done(null, user);
+});
+passport.use(new GoogleStrategy({
+    clientID: '220944213865-96255dv8g2t37874gmr9q7psi5h2hilo.apps.googleusercontent.com',
+    clientSecret: 'UFJnSIMrjTM_D4TuusrBDQ9Q',
+    callbackURL: "http://127.0.0.1:4568/auth/google/callback"
+  },
+  function(accessToken, refreshToken, profile, done) {
+  
+    console.log(profile.id,'line 50');
+    console.log(typeof profile.id, 'line 51');
+    new User({username: profile.id}).fetch().then(function(user){
+      if(user){
+        console.log('exists')
+        return done(null, user);
+      } else {
+        var user = new User({
+          username: profile.id,
+          // password: password
+        });
+        user.save().then(function(newUser){
+          Users.add(newUser);
+          console.log('tried to make new user');
+          // res.send(200, newUser);
+          return done(null, user);
+          // req.session.regenerate(function(err){
+          //   req.session.loggedIn = true;
+          //   res.redirect('/');          
+          // });
+        });
+      }
+    })
 
-//} else {
+    // User.findOrCreate({ googleId: profile.id }, function (err, user) {
+    //   return done(err, user);
+    // });
+  }
+));
 
-//}
+// app.get('/auth/google',
+//   passport.authenticate('google', { scope: 'https://www.googleapis.com/auth/plus.login' }));
 
 app.get('/logout', function(req, res){
   req.session.destroy(function(){
     res.redirect('/login');
   });
 })
-app.get('/', 
-function(req, res) {
-  // res.redirect('login');
-  if (req.session.loggedIn === true){
-    res.render('index');
-  } else {
-    res.redirect('/login');
-  }
+
+app.get('/auth/google',
+  passport.authenticate('google', { scope: 'https://www.googleapis.com/auth/plus.login' }));
+
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/login'}),
+  function(req, res) {   
+    console.log('line 95');
+    // Successful authentication, redirect home.
+    res.redirect('/');
 });
+
+
+app.get('/',
+  // passport.authenticate('google', { scope: 'https://www.googleapis.com/auth/plus.login' }),
+  function(req, res){
+    res.render('index');
+});
+
 
 app.get('/create', 
 function(req, res) {
-  if (req.session.loggedIn === true){
+  // if (req.session.loggedIn === true){
     res.render('index');
-  } else {
-    res.redirect('/login');
-  }
+  // } else {
+  //   res.redirect('/login');
+  // }
 });
 
 app.get('/links', 
 function(req, res) {
-  if (req.session.loggedIn === true){
+  // if (req.session.loggedIn === true){
       Links.reset().fetch().then(function(links) {
       res.send(200, links.models);
     });
-  } else {
-    res.redirect('/login');
-  }
+  // } else {
+  //   res.redirect('/login');
+  // }
 });
 
 
@@ -119,6 +176,7 @@ function(req, res) {
 app.get('/login', function(req, res){
   // var session = req.session;
   // session.regenerate(function(err){
+    console.log('line 17')
     res.render('login');
     // res.send(200);
   // });
@@ -141,11 +199,11 @@ app.post('/signup', function(req, res){
       });
       user.save().then(function(newUser){
         Users.add(newUser);
-        // res.send(200, newUser);
-        req.session.regenerate(function(err){
-          req.session.loggedIn = true;
-          res.redirect('/');          
-        });
+        res.send(200, newUser);
+        // req.session.regenerate(function(err){
+        //   req.session.loggedIn = true;
+        //   res.redirect('/');          
+        // });
       });
     }
   });
@@ -162,13 +220,13 @@ app.post('/login', function(req, res){
     
       bcrypt.compare(password, user.get('password'), function(err, response){
         if(response){
-          req.session.regenerate(function(error){
-            if (error) {
-              console.log('error', error);
-            }
-            req.session.loggedIn = true;
-            res.redirect('/');
-          });
+          // req.session.regenerate(function(error){
+          //   if (error) {
+          //     console.log('error', error);
+          //   }
+          //   req.session.loggedIn = true;
+          //   res.redirect('/');
+          // });
         //password did not match  
         } else {
           res.redirect('/login');
